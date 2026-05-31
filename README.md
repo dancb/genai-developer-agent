@@ -138,7 +138,7 @@ Two complementary mechanisms expose what the agent is doing:
 ## File layout
 
 ```
-developer-agent/
+genai-developer-agent/
 ├── .env
 ├── .gitignore
 ├── README.md
