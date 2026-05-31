@@ -32,9 +32,8 @@ from strands.models import BedrockModel
 from strands_tools import editor, shell, python_repl, journal
 
 # --- Local modules ---
-sys.path.insert(0, str(Path(__file__).parent))
-from safeguards import IterationLimiter  # noqa: E402
-from system_prompt import SYSTEM_PROMPT  # noqa: E402
+from .safeguards import IterationLimiter
+from .system_prompt import SYSTEM_PROMPT
 
 
 # ============================================================================
@@ -63,8 +62,8 @@ def configure_logging() -> None:
         stream=sys.stderr,
     )
     # Quiet down boto noise unless we explicitly asked for DEBUG.
+    # Keep botocore at INFO to surface auth/permission errors.
     if level > logging.DEBUG:
-        logging.getLogger("botocore").setLevel(logging.WARNING)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
@@ -74,6 +73,34 @@ log = logging.getLogger("dev_agent")
 # ============================================================================
 # 2. Bedrock model setup
 # ============================================================================
+def verify_aws_credentials(region: str, profile: str | None) -> None:
+    """Pre-flight check: verify AWS credentials work before entering REPL.
+
+    Calls sts:GetCallerIdentity to fail-fast if credentials are missing,
+    expired, or lack basic permissions. Better to surface auth errors
+    immediately than after the user types their first prompt.
+
+    Raises:
+        ClientError: if credentials are invalid or STS call fails.
+    """
+    session_kwargs = {"region_name": region}
+    if profile:
+        session_kwargs["profile_name"] = profile
+    boto_session = boto3.Session(**session_kwargs)
+    sts = boto_session.client("sts")
+
+    try:
+        identity = sts.get_caller_identity()
+        log.info(
+            "AWS credentials verified | account=%s arn=%s",
+            identity.get("Account"),
+            identity.get("Arn"),
+        )
+    except ClientError as e:
+        log.error("AWS credential verification failed: %s", e)
+        raise
+
+
 def build_bedrock_model() -> BedrockModel:
     """Initialise the BedrockModel.
 
@@ -204,8 +231,9 @@ def repl(agent: Agent, limiter: IterationLimiter) -> None:
             # Bedrock-side failures (throttling, validation, model-not-found, …)
             log.error("AWS Bedrock error: %s", aws_err)
             continue
-        except Exception as e:  # noqa: BLE001 — top-level REPL guard
-            log.exception("Unhandled agent error: %s", e)
+        except RuntimeError as e:
+            # SDK-level failures (tool execution errors, hook cancellations, …)
+            log.exception("Agent runtime error: %s", e)
             continue
 
         # Surface stop reason for observability — especially useful when the
@@ -229,6 +257,15 @@ def main() -> int:
 
     configure_logging()
 
+    # Verify AWS credentials before building the agent.
+    region = os.getenv("AWS_REGION", "us-east-1")
+    profile = os.getenv("AWS_PROFILE")
+    try:
+        verify_aws_credentials(region, profile)
+    except (ClientError, BotoCoreError) as e:
+        log.error("Cannot proceed without valid AWS credentials: %s", e)
+        return 1
+
     # Bypass per-tool confirmation prompts if explicitly opted in. The
     # community tools (shell, editor, python_repl) prompt-on-action by default
     # as a safety net. Senior engineers running a trusted local agent usually
@@ -238,7 +275,7 @@ def main() -> int:
         log.warning("BYPASS_TOOL_CONSENT=true — tools will execute without prompting.")
 
     try:
-        max_iter = int(os.getenv("DEV_AGENT_MAX_ITERATIONS", "25"))
+        max_iter = max(1, int(os.getenv("DEV_AGENT_MAX_ITERATIONS", "25")))
     except ValueError:
         max_iter = 25
         log.warning("Invalid DEV_AGENT_MAX_ITERATIONS; defaulting to %d", max_iter)

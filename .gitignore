@@ -1,0 +1,48 @@
+# ==========================================
+# Entornos Virtuales
+# ==========================================
+.venv/
+venv/
+env/
+ENV/
+
+# ==========================================
+# Caché y Compilados de Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==========================================
+# Estado Local y Serialización (Específico de tu proyecto)
+# ==========================================
+repl_state/
+*.pkl
+
+# ==========================================
+# Variables de Entorno y Secretos
+# ==========================================
+#.env
+#.env.*
+*.pem
+*.key
+
+# ==========================================
+# Archivos de Sistema Operativo
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# IDEs y Editores de Código
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
