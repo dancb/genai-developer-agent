@@ -1,0 +1,14 @@
+# ---- Core SDK ----
+# Strands Agents SDK: the orchestration framework (Agent class, event loop, hooks).
+strands-agents>=1.19,<2.0
+
+# Strands community tools package: provides editor, shell, python_repl, journal, etc.
+strands-agents-tools>=0.2,<1.0
+
+# ---- AWS ----
+# boto3 is used by BedrockModel under the hood for Bedrock Converse API calls.
+boto3>=1.35,<2.0
+
+# ---- DX / Observability ----
+# python-dotenv lets us load AWS_PROFILE / AWS_REGION from a .env file at startup.
+python-dotenv>=1.0,<2.0
