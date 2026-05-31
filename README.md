@@ -139,7 +139,7 @@ Two complementary mechanisms expose what the agent is doing:
 
 ```
 developer-agent/
-├── .env.example
+├── .env
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
