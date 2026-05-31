@@ -2,37 +2,50 @@
 
 A local **Single-Agent / ReAct** coding assistant built on the [Strands Agents SDK](https://strandsagents.com), powered by Claude Sonnet 4.5 via Amazon Bedrock.
 
-## Architecture
+## Runtime Flow
 
 ```
-              ┌──────────────────────────────────────────────────────┐
-              │                Developer Agent (single)              │
-              │                                                      │
-   user ───▶  │   ┌────────────┐    ┌────────────────────────────┐   │
-              │   │ system     │    │     Strands event loop     │   │
-              │   │ prompt     │──▶ │   (ReAct: reason → act)    │   │
-              │   └────────────┘    └────────────┬───────────────┘   │
-              │                                  │                   │
-              │   Hook: IterationLimiter   ──┐   │                   │
-              │   (cancels on budget breach) │   │                   │
-              │                              ▼   ▼                   │
-              │                      ┌──────────────────┐            │
-              │                      │   BedrockModel   │            │
-              │                      │  (boto3 Converse)│            │
-              │                      └────────┬─────────┘            │
-              │                               │                      │
-              │  ┌────────────────────────────┴──────────────────┐   │
-              │  │              Tool registry                    │   │
-              │  │   editor · shell · python_repl · journal      │   │
-              │  └───────────────────────────────────────────────┘   │
-              └──────────────────────────────────────────────────────┘
-                               ▲
-                               │ bedrock:InvokeModelWithResponseStream
-                               ▼
-                  ┌──────────────────────────┐
-                  │   Amazon Bedrock         │
-                  │   Claude Sonnet 4.5      │
-                  └──────────────────────────┘
+User
+ │
+ ▼
+REPL
+ │
+ ▼
+Agent(user_input)
+ │
+ ▼
+System Prompt
+ │
+ ▼
+Strands ReAct Runtime
+ │
+ ├─ BeforeModelCall Hook
+ │
+ ├─ Claude Sonnet
+ │      │
+ │      ▼
+ │   Reason
+ │
+ ├─ Tool call?
+ │      │
+ │      ├─ editor
+ │      ├─ shell
+ │      ├─ python_repl
+ │      └─ journal
+ │
+ ├─ Observe result
+ │
+ ├─ BeforeModelCall Hook
+ │
+ ├─ Claude Sonnet
+ │
+ └─ Repeat
+ │
+ ▼
+Final Answer
+ │
+ ▼
+User
 ```
 
 **No supervisor, no swarm, no graph.** A single Agent owns the loop.
